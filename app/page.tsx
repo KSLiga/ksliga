@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Trophy, Calendar, Target, Settings } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Trophy, Calendar, Target, Settings, Clock } from "lucide-react"
 import {
   getTeams,
   getMatches,
@@ -13,9 +14,11 @@ import {
   calculateLeagueTable,
   getChampionships,
   getActiveChampionship,
+  getMatchGoals,
 } from "@/lib/database"
 import { AdminPanel } from "@/components/admin-panel"
-import type { Team, Match, Player, Championship } from "@/lib/supabase"
+import { CupTournament } from "@/components/cup-tournament"
+import type { Team, Match, Player, Championship, MatchGoal } from "@/lib/supabase"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TeamDisplay } from "@/components/team-display"
 
@@ -28,10 +31,12 @@ export default function KSLigaSite() {
   const [calendar, setCalendar] = useState<Match[]>([])
   const [results, setResults] = useState<Match[]>([])
   const [scorers, setScorers] = useState<Player[]>([])
+  const [matchGoals, setMatchGoals] = useState<{ [key: number]: MatchGoal[] }>({})
   const [loading, setLoading] = useState(true)
 
   const [currentChampionshipId, setCurrentChampionshipId] = useState<number | null>(null)
   const [championships, setChampionships] = useState<Championship[]>([])
+  const [currentChampionship, setCurrentChampionship] = useState<Championship | null>(null)
 
   // Load initial data (championships list)
   useEffect(() => {
@@ -91,10 +96,37 @@ export default function KSLigaSite() {
       setCalendar(matchesData.filter((m) => !m.is_finished))
       setResults(matchesData.filter((m) => m.is_finished))
       setScorers(playersData)
+
+      // Set current championship info
+      const championship = championships.find((c) => c.id === championshipId)
+      setCurrentChampionship(championship || null)
+
+      // Load match goals for finished matches
+      const finishedMatches = matchesData.filter((m) => m.is_finished)
+      const goalsData: { [key: number]: MatchGoal[] } = {}
+
+      for (const match of finishedMatches) {
+        try {
+          const goals = await getMatchGoals(match.id)
+          goalsData[match.id] = goals
+        } catch (error) {
+          console.error(`Error loading goals for match ${match.id}:`, error)
+          goalsData[match.id] = []
+        }
+      }
+
+      setMatchGoals(goalsData)
     } catch (error) {
       console.error("Error loading championship data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoalsUpdated = async () => {
+    // Reload match goals when they are updated
+    if (currentChampionshipId) {
+      await loadDataForChampionship(currentChampionshipId)
     }
   }
 
@@ -171,233 +203,317 @@ export default function KSLigaSite() {
           </div>
         ) : (
           <>
-            {/* Debug info */}
-            <div className="bg-gray-100 p-2 rounded text-xs text-gray-600">
-              Поточний чемпіонат: {currentChampionshipId} | Команд: {teams.length} | Матчів:{" "}
-              {calendar.length + results.length} | Гравців: {scorers.length}
-            </div>
-
-            {/* Tournament Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-700">
-                  <Trophy className="h-6 w-6" />
-                  Турнірна таблиця
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {table.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">Немає даних для відображення турнірної таблиці</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-yellow-100 border-b">
-                          <th className="text-left p-3 font-semibold">#</th>
-                          <th className="text-left p-3 font-semibold">Команда</th>
-                          <th className="text-center p-3 font-semibold">І</th>
-                          <th className="text-center p-3 font-semibold">В</th>
-                          <th className="text-center p-3 font-semibold">Н</th>
-                          <th className="text-center p-3 font-semibold">П</th>
-                          <th className="text-center p-3 font-semibold">З</th>
-                          <th className="text-center p-3 font-semibold">П</th>
-                          <th className="text-center p-3 font-semibold">О</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {table.map((team, index) => (
-                          <tr key={index} className={`border-b hover:bg-gray-50 ${getPositionColor(index + 1)}`}>
-                            <td className="p-3 font-semibold">{index + 1}</td>
-                            <td className="p-3">
-                              <TeamDisplay teamName={team.name} teamLogo={getTeamLogo(team.name)} size="md" />
-                            </td>
-                            <td className="text-center p-3">{team.games}</td>
-                            <td className="text-center p-3 text-green-600 font-semibold">{team.wins}</td>
-                            <td className="text-center p-3 text-yellow-600 font-semibold">{team.draws}</td>
-                            <td className="text-center p-3 text-red-600 font-semibold">{team.losses}</td>
-                            <td className="text-center p-3">{team.gf}</td>
-                            <td className="text-center p-3">{team.ga}</td>
-                            <td className="text-center p-3 font-bold text-blue-700">{team.pts}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+            {/* Main Content Tabs */}
+            <Tabs defaultValue={currentChampionship?.tournament_type === "cup" ? "cup" : "table"} className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                {currentChampionship?.tournament_type === "league" && (
+                  <TabsTrigger value="table">Турнірна таблиця</TabsTrigger>
                 )}
-              </CardContent>
-            </Card>
+                {currentChampionship?.tournament_type === "cup" && (
+                  <TabsTrigger value="cup">Кубковий турнір</TabsTrigger>
+                )}
+                <TabsTrigger value="calendar">Календар матчів</TabsTrigger>
+                <TabsTrigger value="results">Результати</TabsTrigger>
+                <TabsTrigger value="scorers">Бомбардири</TabsTrigger>
+                <TabsTrigger value="admin">Адмін-панель</TabsTrigger>
+              </TabsList>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Calendar */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Calendar className="h-6 w-6" />
-                    Календар матчів
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {calendar.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Немає запланованих матчів</div>
-                  ) : (
-                    [...new Set(calendar.map((m) => m.round))].map((round) => (
-                      <div key={round}>
-                        <Badge variant="outline" className="mb-2">
-                          Тур {round}
-                        </Badge>
-                        <div className="space-y-2">
-                          {calendar
-                            .filter((m) => m.round === round)
-                            .map((match, index) => (
-                              <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                                <div className="text-sm text-gray-600 mb-2">{match.date}</div>
-                                <div className="flex items-center justify-between">
-                                  <TeamDisplay
-                                    teamName={match.home_team}
-                                    teamLogo={getTeamLogo(match.home_team)}
-                                    size="sm"
-                                  />
-                                  <span className="text-gray-500 mx-2 font-bold">VS</span>
-                                  <TeamDisplay
-                                    teamName={match.away_team}
-                                    teamLogo={getTeamLogo(match.away_team)}
-                                    size="sm"
-                                  />
-                                </div>
-                              </div>
-                            ))}
+              {/* Tournament Table Tab */}
+              {currentChampionship?.tournament_type === "league" && (
+                <TabsContent value="table" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-blue-700">
+                        <Trophy className="h-6 w-6" />
+                        Турнірна таблиця
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {table.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          Немає даних для відображення турнірної таблиці
                         </div>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Results */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Trophy className="h-6 w-6" />
-                    Результати матчів
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {results.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Немає завершених матчів</div>
-                  ) : (
-                    [...new Set(results.map((r) => r.round))].map((round) => (
-                      <div key={round}>
-                        <Badge variant="outline" className="mb-2">
-                          Тур {round}
-                        </Badge>
-                        <div className="space-y-2">
-                          {results
-                            .filter((r) => r.round === round)
-                            .map((result, index) => (
-                              <div key={index} className="bg-green-50 p-3 rounded-lg border-l-4 border-green-400">
-                                <div className="text-sm text-gray-600 mb-2">{result.date}</div>
-                                <div className="flex items-center justify-center gap-3">
-                                  <TeamDisplay
-                                    teamName={result.home_team}
-                                    teamLogo={getTeamLogo(result.home_team)}
-                                    size="sm"
-                                  />
-                                  <div className="bg-white px-3 py-1 rounded font-bold text-green-900 min-w-[60px] text-center">
-                                    {result.home_score} — {result.away_score}
-                                  </div>
-                                  <TeamDisplay
-                                    teamName={result.away_team}
-                                    teamLogo={getTeamLogo(result.away_team)}
-                                    size="sm"
-                                  />
-                                </div>
-                              </div>
-                            ))}
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-yellow-100 border-b">
+                                <th className="text-left p-3 font-semibold">#</th>
+                                <th className="text-left p-3 font-semibold">Команда</th>
+                                <th className="text-center p-3 font-semibold">І</th>
+                                <th className="text-center p-3 font-semibold">В</th>
+                                <th className="text-center p-3 font-semibold">Н</th>
+                                <th className="text-center p-3 font-semibold">П</th>
+                                <th className="text-center p-3 font-semibold">З</th>
+                                <th className="text-center p-3 font-semibold">П</th>
+                                <th className="text-center p-3 font-semibold">О</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {table.map((team, index) => (
+                                <tr key={index} className={`border-b hover:bg-gray-50 ${getPositionColor(index + 1)}`}>
+                                  <td className="p-3 font-semibold">{index + 1}</td>
+                                  <td className="p-3">
+                                    <TeamDisplay teamName={team.name} teamLogo={getTeamLogo(team.name)} size="md" />
+                                  </td>
+                                  <td className="text-center p-3">{team.games}</td>
+                                  <td className="text-center p-3 text-green-600 font-semibold">{team.wins}</td>
+                                  <td className="text-center p-3 text-yellow-600 font-semibold">{team.draws}</td>
+                                  <td className="text-center p-3 text-red-600 font-semibold">{team.losses}</td>
+                                  <td className="text-center p-3">{team.gf}</td>
+                                  <td className="text-center p-3">{team.ga}</td>
+                                  <td className="text-center p-3 font-bold text-blue-700">{team.pts}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
 
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Top Scorers */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Target className="h-6 w-6" />
-                    Бомбардири
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {scorers.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Немає даних про бомбардирів</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {scorers.map((scorer, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-blue-100 text-blue-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
-                              {index + 1}
-                            </div>
-                            <div>
-                              <div className="font-medium">{scorer.name}</div>
-                              <TeamDisplay
-                                teamName={scorer.team}
-                                teamLogo={getTeamLogo(scorer.team)}
-                                size="sm"
-                                showName={true}
-                                className="text-sm text-gray-600"
-                              />
-                            </div>
-                          </div>
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                            {scorer.goals} гол{scorer.goals !== 1 ? "и" : ""}
+              {/* Cup Tournament Tab */}
+              {currentChampionship?.tournament_type === "cup" && (
+                <TabsContent value="cup" className="space-y-4">
+                  <CupTournament championshipId={currentChampionshipId!} />
+                </TabsContent>
+              )}
+
+              {/* Calendar Tab */}
+              <TabsContent value="calendar" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Calendar className="h-6 w-6" />
+                      Календар матчів
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {calendar.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">Немає запланованих матчів</div>
+                    ) : (
+                      [...new Set(calendar.map((m) => m.round))].map((round) => (
+                        <div key={round}>
+                          <Badge variant="outline" className="mb-2">
+                            {currentChampionship?.tournament_type === "cup"
+                              ? calendar.find((m) => m.round === round)?.cup_stage || `Тур ${round}`
+                              : `Тур ${round}`}
                           </Badge>
+                          <div className="space-y-2">
+                            {calendar
+                              .filter((m) => m.round === round)
+                              .map((match, index) => (
+                                <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-sm text-gray-600 flex items-center gap-2">
+                                      {match.date}
+                                      {match.match_time && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {match.match_time}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <TeamDisplay
+                                      teamName={match.home_team}
+                                      teamLogo={getTeamLogo(match.home_team)}
+                                      size="sm"
+                                    />
+                                    <span className="text-gray-500 mx-2 font-bold">VS</span>
+                                    <TeamDisplay
+                                      teamName={match.away_team}
+                                      teamLogo={getTeamLogo(match.away_team)}
+                                      size="sm"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-              {/* Admin Panel */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-700">
-                    <Settings className="h-6 w-6" />
-                    Адмін-панель
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!isAdmin ? (
-                    <div className="space-y-4">
-                      <Input
-                        type="password"
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder="Введіть пароль"
-                        onKeyPress={(e) => e.key === "Enter" && handleLogin()}
-                      />
-                      <Button onClick={handleLogin} className="w-full">
-                        Увійти
-                      </Button>
-                    </div>
-                  ) : (
-                    currentChampionshipId && (
-                      <AdminPanel
-                        onLogout={() => setIsAdmin(false)}
-                        currentChampionshipId={currentChampionshipId}
-                        onChampionshipChange={(id) => {
-                          setCurrentChampionshipId(id)
-                        }}
-                      />
-                    )
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+              {/* Results Tab */}
+              <TabsContent value="results" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Trophy className="h-6 w-6" />
+                      Результати матчів
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {results.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">Немає завершених матчів</div>
+                    ) : (
+                      [...new Set(results.map((r) => r.round))].map((round) => (
+                        <div key={round}>
+                          <Badge variant="outline" className="mb-2">
+                            {currentChampionship?.tournament_type === "cup"
+                              ? results.find((r) => r.round === round)?.cup_stage || `Тур ${round}`
+                              : `Тур ${round}`}
+                          </Badge>
+                          <div className="space-y-2">
+                            {results
+                              .filter((r) => r.round === round)
+                              .map((result, index) => (
+                                <div key={index} className="bg-green-50 p-4 rounded-lg border-l-4 border-green-400">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="text-sm text-gray-600 flex items-center gap-2">
+                                      {result.date}
+                                      {result.match_time && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {result.match_time}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-center gap-3 mb-3">
+                                    <TeamDisplay
+                                      teamName={result.home_team}
+                                      teamLogo={getTeamLogo(result.home_team)}
+                                      size="sm"
+                                    />
+                                    <div className="bg-white px-3 py-1 rounded font-bold text-green-900 min-w-[60px] text-center">
+                                      {result.home_score} — {result.away_score}
+                                    </div>
+                                    <TeamDisplay
+                                      teamName={result.away_team}
+                                      teamLogo={getTeamLogo(result.away_team)}
+                                      size="sm"
+                                    />
+                                  </div>
+
+                                  {/* Match Goals */}
+                                  {matchGoals[result.id] && matchGoals[result.id].length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-green-200">
+                                      <div className="text-sm font-semibold text-green-800 mb-2">Автори голів:</div>
+                                      <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                          <div className="font-medium text-green-700">{result.home_team}:</div>
+                                          {matchGoals[result.id]
+                                            .filter((goal) => goal.team_name === result.home_team)
+                                            .map((goal, idx) => (
+                                              <div key={idx} className="ml-2">
+                                                {goal.player_name} {goal.minute && `(${goal.minute}')`}
+                                                {goal.goal_type === "penalty" && " (пен.)"}
+                                                {goal.goal_type === "own_goal" && " (автогол)"}
+                                              </div>
+                                            ))}
+                                        </div>
+                                        <div>
+                                          <div className="font-medium text-green-700">{result.away_team}:</div>
+                                          {matchGoals[result.id]
+                                            .filter((goal) => goal.team_name === result.away_team)
+                                            .map((goal, idx) => (
+                                              <div key={idx} className="ml-2">
+                                                {goal.player_name} {goal.minute && `(${goal.minute}')`}
+                                                {goal.goal_type === "penalty" && " (пен.)"}
+                                                {goal.goal_type === "own_goal" && " (автогол)"}
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Top Scorers Tab */}
+              <TabsContent value="scorers" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Target className="h-6 w-6" />
+                      Бомбардири
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {scorers.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">Немає даних про бомбардирів</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {scorers.map((scorer, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-blue-100 text-blue-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <div className="font-medium">{scorer.name}</div>
+                                <TeamDisplay
+                                  teamName={scorer.team}
+                                  teamLogo={getTeamLogo(scorer.team)}
+                                  size="sm"
+                                  showName={true}
+                                  className="text-sm text-gray-600"
+                                />
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                              {scorer.goals} гол{scorer.goals !== 1 ? "и" : ""}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Admin Panel Tab */}
+              <TabsContent value="admin" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                      <Settings className="h-6 w-6" />
+                      Адмін-панель
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!isAdmin ? (
+                      <div className="space-y-4">
+                        <Input
+                          type="password"
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          placeholder="Введіть пароль"
+                          onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+                        />
+                        <Button onClick={handleLogin} className="w-full">
+                          Увійти
+                        </Button>
+                      </div>
+                    ) : (
+                      currentChampionshipId && (
+                        <AdminPanel
+                          onLogout={() => setIsAdmin(false)}
+                          currentChampionshipId={currentChampionshipId}
+                          onChampionshipChange={(id) => {
+                            setCurrentChampionshipId(id)
+                          }}
+                        />
+                      )
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>

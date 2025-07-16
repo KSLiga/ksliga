@@ -12,6 +12,8 @@ export interface Championship {
   name: string
   season: string
   is_active: boolean
+  tournament_type: "league" | "cup"
+  cup_stage?: string
   created_at?: string
 }
 
@@ -27,12 +29,14 @@ export interface Match {
   id: number
   round: number
   date: string
+  match_time?: string
   home_team: string
   away_team: string
   home_score?: number
   away_score?: number
   is_finished: boolean
   championship_id: number
+  cup_stage?: string
   created_at?: string
 }
 
@@ -42,5 +46,15 @@ export interface Player {
   team: string
   goals: number
   championship_id: number
+  created_at?: string
+}
+
+export interface MatchGoal {
+  id: number
+  match_id: number
+  player_name: string
+  team_name: string
+  minute?: number
+  goal_type: "regular" | "penalty" | "own_goal"
   created_at?: string
 }

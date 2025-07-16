@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { Championship, Team, Match, Player } from "./supabase"
+import type { Championship, Team, Match, Player, MatchGoal } from "./supabase"
 
 // Championships
 export async function getChampionships(): Promise<Championship[]> {
@@ -122,6 +122,44 @@ export async function deleteMatch(id: number): Promise<void> {
   if (error) throw error
 }
 
+// Match Goals
+export async function getMatchGoals(matchId: number): Promise<MatchGoal[]> {
+  const { data, error } = await supabase
+    .from("match_goals")
+    .select("*")
+    .eq("match_id", matchId)
+    .order("minute", { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function addMatchGoal(goal: {
+  match_id: number
+  player_name: string
+  team_name: string
+  minute?: number
+  goal_type: "regular" | "penalty" | "own_goal"
+}): Promise<MatchGoal> {
+  // ───────────────────────────────────────────────
+  // передаємо тільки валідні ключі
+  const { match_id, player_name, team_name, minute, goal_type } = goal
+  const { data, error } = await supabase
+    .from("match_goals")
+    .insert([{ match_id, player_name, team_name, minute, goal_type }])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteMatchGoal(id: number): Promise<void> {
+  const { error } = await supabase.from("match_goals").delete().eq("id", id)
+
+  if (error) throw error
+}
+
 // Players
 export async function getPlayers(championshipId?: number): Promise<Player[]> {
   let query = supabase.from("players").select("*").order("goals", { ascending: false })
@@ -204,4 +242,17 @@ export async function calculateLeagueTable(championshipId?: number) {
     })
 
   return table.sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga))
+}
+
+// Get cup matches by stage
+export async function getCupMatches(championshipId: number, stage: string): Promise<Match[]> {
+  const { data, error } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("championship_id", championshipId)
+    .eq("cup_stage", stage)
+    .order("date", { ascending: true })
+
+  if (error) throw error
+  return data || []
 }

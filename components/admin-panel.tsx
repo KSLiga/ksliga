@@ -26,8 +26,11 @@ import {
   addPlayer,
   updatePlayer,
   deletePlayer,
+  getMatchGoals,
+  addMatchGoal,
+  deleteMatchGoal,
 } from "@/lib/database"
-import type { Championship, Team, Match, Player } from "@/lib/supabase"
+import type { Championship, Team, Match, Player, MatchGoal } from "@/lib/supabase"
 
 interface AdminPanelProps {
   onLogout: () => void
@@ -43,7 +46,12 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
   const [loading, setLoading] = useState(false)
 
   // Championship form state
-  const [championshipForm, setChampionshipForm] = useState({ name: "", season: "", is_active: false })
+  const [championshipForm, setChampionshipForm] = useState({
+    name: "",
+    season: "",
+    is_active: false,
+    tournament_type: "league",
+  })
   const [editingChampionship, setEditingChampionship] = useState<Championship | null>(null)
 
   // Team form state
@@ -59,12 +67,16 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
     home_score: "",
     away_score: "",
     is_finished: false,
+    match_time: "",
+    cup_stage: "",
   })
   const [editingMatch, setEditingMatch] = useState<Match | null>(null)
 
   // Player form state
   const [playerForm, setPlayerForm] = useState({ name: "", team: "", goals: 0 })
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+
+  const currentChampionship = championships.find((c) => c.id === currentChampionshipId)
 
   useEffect(() => {
     loadData()
@@ -99,7 +111,7 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         const newChampionship = await addChampionship(championshipForm)
         onChampionshipChange(newChampionship.id)
       }
-      setChampionshipForm({ name: "", season: "", is_active: false })
+      setChampionshipForm({ name: "", season: "", is_active: false, tournament_type: "league" })
       await loadData()
     } catch (error) {
       console.error("Error saving championship:", error)
@@ -160,6 +172,15 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
   }
 
   // Match handlers
+  const [selectedMatchForGoals, setSelectedMatchForGoals] = useState<Match | null>(null)
+  const [matchGoals, setMatchGoals] = useState<MatchGoal[]>([])
+  const [goalForm, setGoalForm] = useState({
+    player_name: "",
+    team_name: "",
+    minute: "",
+    goal_type: "regular" as "regular" | "penalty" | "own_goal",
+  })
+
   const handleMatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -173,6 +194,8 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         away_score: matchForm.away_score ? Number.parseInt(matchForm.away_score) : null,
         is_finished: matchForm.is_finished,
         championship_id: currentChampionshipId,
+        match_time: matchForm.match_time,
+        cup_stage: matchForm.cup_stage,
       }
 
       if (editingMatch) {
@@ -190,6 +213,8 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         home_score: "",
         away_score: "",
         is_finished: false,
+        match_time: "",
+        cup_stage: "",
       })
       await loadData()
     } catch (error) {
@@ -205,6 +230,67 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         await loadData()
       } catch (error) {
         console.error("Error deleting match:", error)
+      }
+    }
+  }
+
+  // Match goals handlers
+  const loadMatchGoals = async (matchId: number) => {
+    try {
+      const goals = await getMatchGoals(matchId)
+      setMatchGoals(goals)
+    } catch (error) {
+      console.error("Error loading match goals:", error)
+    }
+  }
+  // 🔎 Знаходить ID гравця за ім'ям
+  // const getPlayerIdByName = (name: string) => {
+  //   const player = players.find((p) => p.name === name)
+  //   return player ? player.id : null
+  // }
+
+  // // 🔎 Знаходить ID команди за назвою
+  // const getTeamIdByName = (name: string) => {
+  //   const team = teams.find((t) => t.name === name)
+  //   return team ? team.id : null
+  // }
+
+  const handleAddMatchGoal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedMatchForGoals) return
+
+    setLoading(true)
+    try {
+      await addMatchGoal({
+        match_id: selectedMatchForGoals.id,
+        player_name: goalForm.player_name,
+        team_name: goalForm.team_name,
+        minute: goalForm.minute ? Number.parseInt(goalForm.minute) : undefined,
+        goal_type: goalForm.goal_type,
+      })
+
+      setGoalForm({
+        player_name: "",
+        team_name: selectedMatchForGoals.home_team,
+        minute: "",
+        goal_type: "regular",
+      })
+      await loadMatchGoals(selectedMatchForGoals.id)
+    } catch (error) {
+      console.error("Error adding match goal:", error)
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteMatchGoal = async (goalId: number) => {
+    if (confirm("Ви впевнені, що хочете видалити цей гол?")) {
+      try {
+        await deleteMatchGoal(goalId)
+        if (selectedMatchForGoals) {
+          await loadMatchGoals(selectedMatchForGoals.id)
+        }
+      } catch (error) {
+        console.error("Error deleting match goal:", error)
       }
     }
   }
@@ -303,6 +389,23 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
                 />
                 <Label htmlFor="is-active">Активний</Label>
               </div>
+              <div>
+                <Label htmlFor="tournament-type">Тип турніру</Label>
+                <Select
+                  value={championshipForm.tournament_type}
+                  onValueChange={(value) =>
+                    setChampionshipForm({ ...championshipForm, tournament_type: value as "league" | "cup" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Оберіть тип" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="league">Ліга</SelectItem>
+                    <SelectItem value="cup">Кубок</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <Button type="submit" disabled={loading}>
               <Plus className="h-4 w-4 mr-2" />
@@ -314,7 +417,7 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
                 variant="outline"
                 onClick={() => {
                   setEditingChampionship(null)
-                  setChampionshipForm({ name: "", season: "", is_active: false })
+                  setChampionshipForm({ name: "", season: "", is_active: false, tournament_type: "league" })
                 }}
               >
                 Скасувати
@@ -341,6 +444,7 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
                         name: championship.name,
                         season: championship.season,
                         is_active: championship.is_active,
+                        tournament_type: championship.tournament_type,
                       })
                     }}
                   >
@@ -464,13 +568,11 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
               <div>
                 <Label htmlFor="match-round">Тур</Label>
                 <Input
-  id="match-round"
-  type="number"
-  value={matchForm.round || ""}
-  onChange={(e) =>
-    setMatchForm({ ...matchForm, round: Number(e.target.value) || 0 })
-  }
-/>
+                  id="match-round"
+                  type="number"
+                  value={matchForm.round || ""}
+                  onChange={(e) => setMatchForm({ ...matchForm, round: Number(e.target.value) || 0 })}
+                />
               </div>
               <div>
                 <Label htmlFor="match-date">Дата</Label>
@@ -482,6 +584,38 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
                   required
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="match-time">Час матчу</Label>
+                <Input
+                  id="match-time"
+                  type="time"
+                  value={matchForm.match_time}
+                  onChange={(e) => setMatchForm({ ...matchForm, match_time: e.target.value })}
+                />
+              </div>
+              {currentChampionship?.tournament_type === "cup" && (
+                <div>
+                  <Label htmlFor="cup-stage">Стадія кубка</Label>
+                  <Select
+                    value={matchForm.cup_stage}
+                    onValueChange={(value) => setMatchForm({ ...matchForm, cup_stage: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Оберіть стадію" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1/32 фіналу">1/32 фіналу</SelectItem>
+                      <SelectItem value="1/16 фіналу">1/16 фіналу</SelectItem>
+                      <SelectItem value="1/8 фіналу">1/8 фіналу</SelectItem>
+                      <SelectItem value="1/4 фіналу">1/4 фіналу</SelectItem>
+                      <SelectItem value="1/2 фіналу">1/2 фіналу</SelectItem>
+                      <SelectItem value="Фінал">Фінал</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -525,20 +659,20 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
               <div>
                 <Label htmlFor="home-score">Голи господарів</Label>
                 <Input
-  id="home-score"
-  type="number"
-  value={matchForm.home_score === "" ? "" : Number(matchForm.home_score)}
-  onChange={(e) => setMatchForm({ ...matchForm, home_score: e.target.value })}
-/>
+                  id="home-score"
+                  type="number"
+                  value={matchForm.home_score === "" ? "" : Number(matchForm.home_score)}
+                  onChange={(e) => setMatchForm({ ...matchForm, home_score: e.target.value })}
+                />
               </div>
               <div>
                 <Label htmlFor="away-score">Голи гостей</Label>
                 <Input
-  id="away-score"
-  type="number"
-  value={matchForm.away_score === "" ? "" : Number(matchForm.away_score)}
-  onChange={(e) => setMatchForm({ ...matchForm, away_score: e.target.value })}
-/>
+                  id="away-score"
+                  type="number"
+                  value={matchForm.away_score === "" ? "" : Number(matchForm.away_score)}
+                  onChange={(e) => setMatchForm({ ...matchForm, away_score: e.target.value })}
+                />
               </div>
               <div className="flex items-center space-x-2 pt-6">
                 <input
@@ -568,6 +702,8 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
                     home_score: "",
                     away_score: "",
                     is_finished: false,
+                    match_time: "",
+                    cup_stage: "",
                   })
                 }}
               >
@@ -578,38 +714,166 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
 
           <div className="space-y-2">
             {matches.map((match) => (
-              <div key={match.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <div className="font-medium">
-                    Тур {match.round}: {match.home_team} - {match.away_team}
+              <div key={match.id} className="p-3 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">
+                      Тур {match.round}: {match.home_team} - {match.away_team}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {match.date} |{match.is_finished ? ` ${match.home_score} - ${match.away_score}` : " Не зіграно"}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {match.date} |{match.is_finished ? ` ${match.home_score} - ${match.away_score}` : " Не зіграно"}
+                  <div className="flex gap-2">
+                    {match.is_finished && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedMatchForGoals(match)
+                          setGoalForm({
+                            player_name: "",
+                            team_name: match.home_team,
+                            minute: "",
+                            goal_type: "regular",
+                          })
+                          loadMatchGoals(match.id)
+                        }}
+                      >
+                        Голи
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingMatch(match)
+                        setMatchForm({
+                          round: match.round,
+                          date: match.date,
+                          home_team: match.home_team,
+                          away_team: match.away_team,
+                          home_score: match.home_score?.toString() || "",
+                          away_score: match.away_score?.toString() || "",
+                          is_finished: match.is_finished,
+                          match_time: match.match_time || "",
+                          cup_stage: match.cup_stage || "",
+                        })
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteMatch(match.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingMatch(match)
-                      setMatchForm({
-                        round: match.round,
-                        date: match.date,
-                        home_team: match.home_team,
-                        away_team: match.away_team,
-                        home_score: match.home_score?.toString() || "",
-                        away_score: match.away_score?.toString() || "",
-                        is_finished: match.is_finished,
-                      })
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDeleteMatch(match.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+
+                {/* Match Goals Management */}
+                {selectedMatchForGoals?.id === match.id && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border-t">
+                    <h4 className="font-semibold mb-3">
+                      Автори голів: {match.home_team} {match.home_score} - {match.away_score} {match.away_team}
+                    </h4>
+
+                    {/* Add Goal Form */}
+                    <form onSubmit={handleAddMatchGoal} className="space-y-3 mb-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="goal-player-name">Ім'я гравця</Label>
+                          <Input
+                            id="goal-player-name"
+                            value={goalForm.player_name}
+                            onChange={(e) => setGoalForm({ ...goalForm, player_name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="goal-team-name">Команда</Label>
+                          <Select
+                            value={goalForm.team_name}
+                            onValueChange={(value) => setGoalForm({ ...goalForm, team_name: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={match.home_team}>{match.home_team}</SelectItem>
+                              <SelectItem value={match.away_team}>{match.away_team}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="goal-minute">Хвилина</Label>
+                          <Input
+                            id="goal-minute"
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={goalForm.minute}
+                            onChange={(e) => setGoalForm({ ...goalForm, minute: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="goal-type">Тип голу</Label>
+                          <Select
+                            value={goalForm.goal_type}
+                            onValueChange={(value) =>
+                              setGoalForm({ ...goalForm, goal_type: value as "regular" | "penalty" | "own_goal" })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="regular">Звичайний</SelectItem>
+                              <SelectItem value="penalty">Пенальті</SelectItem>
+                              <SelectItem value="own_goal">Автогол</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" disabled={loading}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Додати гол
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedMatchForGoals(null)}
+                        >
+                          Закрити
+                        </Button>
+                      </div>
+                    </form>
+
+                    {/* Goals List */}
+                    <div className="space-y-2">
+                      {matchGoals.length === 0 ? (
+                        <div className="text-center py-2 text-gray-500 text-sm">Немає доданих голів</div>
+                      ) : (
+                        matchGoals.map((goal) => (
+                          <div key={goal.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                            <div className="text-sm">
+                              <span className="font-medium">{goal.player_name}</span>
+                              <span className="text-gray-600 ml-2">({goal.team_name})</span>
+                              {goal.minute && <span className="text-blue-600 ml-2">{goal.minute}'</span>}
+                              {goal.goal_type === "penalty" && <span className="text-orange-600 ml-1">(пен.)</span>}
+                              {goal.goal_type === "own_goal" && <span className="text-red-600 ml-1">(автогол)</span>}
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteMatchGoal(goal.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -655,15 +919,14 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
               <div>
                 <Label htmlFor="player-goals">Голи</Label>
                 <Input
-  id="player-goals"
-  type="number"
-  value={playerForm.goals === 0 ? "" : playerForm.goals}
-  onChange={(e) => {
-    const val = e.target.value
-    setPlayerForm({ ...playerForm, goals: val === "" ? 0 : parseInt(val) })
-  }}
-/>
-
+                  id="player-goals"
+                  type="number"
+                  value={playerForm.goals === 0 ? "" : playerForm.goals}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setPlayerForm({ ...playerForm, goals: val === "" ? 0 : Number.parseInt(val) })
+                  }}
+                />
               </div>
             </div>
             <Button type="submit" disabled={loading}>
