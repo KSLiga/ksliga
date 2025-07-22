@@ -158,7 +158,7 @@ export default function KSLigaSite() {
 
   if (loading && !currentChampionshipId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-andrii-50 to-andrii-800 flex items-center justify-center">
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-700 mb-2">KS Liga</div>
           <div className="text-lg">Завантаження...</div>
@@ -168,7 +168,7 @@ export default function KSLigaSite() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-andrii-50 to-andrii-800">
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-600 to-andrii-800 text-white shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-666 text-center">
