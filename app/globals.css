@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+.from-andrii-50 {
+    --tw-gradient-from: #14213d var(--tw-gradient-from-position);
+}
 
 .to-andrii-800 {
     --tw-gradient-to: #14213d var(--tw-gradient-to-position);
