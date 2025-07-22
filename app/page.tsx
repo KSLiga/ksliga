@@ -176,7 +176,8 @@ export default function KSLigaSite() {
             <img src="/images/ks-logo.png" alt="KS TV Logo" className="h-666 w-auto object-contain" />
             <h1 className="text-4xl font-bold">KS Liga</h1>
           </div>
-          <p className="text-yellow-200 text-lg">KS TV – Спортивні події онлайн!</p>
+          <p className="text-yellow-200 text-lg">KS TV – Спортивні події онлайн!
+"Сайт хоче бути боком"</p>
           {championships.length > 1 && currentChampionshipId && (
             <div className="mt-4">
               <Select value={currentChampionshipId.toString()} onValueChange={handleChampionshipChange}>
