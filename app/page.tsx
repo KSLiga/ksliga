@@ -171,8 +171,8 @@ export default function KSLigaSite() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50">
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-8 text-center">
-          <div className="flex items-center justify-center gap-4 mb-2">
+        <div className="max-w-6xl mx-auto px-4 py-666 text-center">
+          <div className="flex items-center justify-center gap-4 mb-666">
             <img src="/images/ks-logo.png" alt="KS TV Logo" className="h-666 w-auto object-contain" />
             <h1 className="text-4xl font-bold">KS Liga</h1>
           </div>
