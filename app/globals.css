@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+
+.to-andrii-800 {
+    --tw-gradient-to: #14213d var(--tw-gradient-to-position);
+}
+
+
 .h-666 {
     height: 7rem;
 }
