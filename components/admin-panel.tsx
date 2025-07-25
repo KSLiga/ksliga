@@ -351,7 +351,7 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         </Button>
       </div>
 
-      <Tabs defaultValue="championships" className="w-full">
+      <Tabs value="championships" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="championships">Чемпіонати</TabsTrigger>
           <TabsTrigger value="teams">Команди</TabsTrigger>
