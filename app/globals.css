@@ -17,6 +17,12 @@
 }
 
 
+@media (min-width: 640px) {
+    .sm\:h-16 {
+        height: 7rem;
+    }
+}
+
 .mb-2 {
     margin-bottom: 0rem; 
 }
