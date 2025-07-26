@@ -15,7 +15,11 @@
         padding-bottom: 0rem;
     }
 }
-
+@media (min-width: 640px) {
+    .sm\:h-16 {
+        height: 7rem;
+    }
+}
 
 .h-666 {
     height: 7rem;
