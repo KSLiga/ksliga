@@ -17,10 +17,8 @@
 }
 
 
-@media (min-width: 640px) {
-    .sm\:h-666 {
-        height: 7rem;
-    }
+.h-666 {
+    height: 7rem;
 }
 
 .mb-2 {
