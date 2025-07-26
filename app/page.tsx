@@ -183,7 +183,7 @@ export default function KSLigaSite() {
           </div>
           <p className="text-yellow-200 text-sm sm:text-lg">KS TV – Спортивні події онлайн!</p>
           {championships.length > 1 && currentChampionshipId && (
-            <div className="mt-4">
+            <div className="mt-666">
               <Select value={currentChampionshipId.toString()} onValueChange={handleChampionshipChange}>
                 <SelectTrigger className="w-full max-w-64 mx-auto bg-white text-black">
                   <SelectValue placeholder="Оберіть чемпіонат" />
