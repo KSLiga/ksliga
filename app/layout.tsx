@@ -17,6 +17,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-PBKCJ68RYL"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-PBKCJ68RYL');
+            `,
+          }}
+        />
+        {/* Fonts */}
         <style>{`
 html {
   font-family: ${GeistSans.style.fontFamily};
