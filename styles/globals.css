@@ -8,6 +8,17 @@
   }
 }
 
+.sm\:py-8 {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+}
+
+
+.mb-2 {
+    margin-bottom: 0rem; 
+}
+
+
 @layer base {
   :root {
     --background: 0 0% 100%;
