@@ -2,6 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+.from-andrii-50 {
+    --tw-gradient-from: #14213d var(--tw-gradient-from-position);
+}
+
+.to-andrii-800 {
+    --tw-gradient-to: #14213d var(--tw-gradient-to-position);
+}
+
+
+.h-666 {
+    height: 7rem;
+}
+
+.mb-666 {
+    margin-bottom: -2rem;
+}
+
+.py-666 {
+    padding-top: 0rem;
+    padding-bottom: 1rem;
+}
+
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -10,7 +37,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 210 4% 85%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
