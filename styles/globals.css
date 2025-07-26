@@ -8,9 +8,17 @@
   }
 }
 
-.sm\:py-8 {
+@media (min-width: 640px) {
+    .sm\:py-8 {
         padding-top: 0rem;
         padding-bottom: 0rem;
+    }
+}
+
+@media (min-width: 640px) {
+    .sm\:h-16 {
+        height: 7rem;
+    }
 }
 
 
