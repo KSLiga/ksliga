@@ -163,7 +163,7 @@ export default function KSLigaSite() {
   // Показуємо завантаження тільки на початку
   if (loading && championships.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-andrii-50 to-andrii-800 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-700 2">KS Liga</div>
           <div className="text-lg">Завантаження...</div>
@@ -173,9 +173,9 @@ export default function KSLigaSite() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-andrii-50 to-andrii-800">
       {/* Header - Mobile Optimized */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+      <header className="bg-gradient-to-r from-blue-600 to-andrii-800 text-white shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-666 sm:py-666 text-center">
           <div className="flex items-center justify-center gap-2 sm:gap-4 mb-666">
             <img src="/images/ks-logo.png" alt="KS TV Logo" className="h-666 sm:h-666 w-auto object-contain" />
