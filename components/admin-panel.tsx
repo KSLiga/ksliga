@@ -359,7 +359,7 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
           <TabsTrigger value="players">Гравці</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="championships">
+        <TabsContent value="championships" className="p-4">
   <h2 className="text-xl font-bold mb-4">Чемпіонати</h2>
 
   {/* ✅ Форма додавання / редагування чемпіонату */}
@@ -368,26 +368,34 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
       <Label>Назва</Label>
       <Input
         value={championshipForm.name}
-        onChange={(e) => setChampionshipForm({ ...championshipForm, name: e.target.value })}
+        onChange={(e) =>
+          setChampionshipForm({ ...championshipForm, name: e.target.value })
+        }
         required
       />
     </div>
+
     <div>
       <Label>Сезон</Label>
       <Input
         value={championshipForm.season}
-        onChange={(e) => setChampionshipForm({ ...championshipForm, season: e.target.value })}
+        onChange={(e) =>
+          setChampionshipForm({ ...championshipForm, season: e.target.value })
+        }
         required
       />
     </div>
+
     <div>
       <Label>Тип турніру</Label>
       <Select
         value={championshipForm.tournament_type}
-        onValueChange={(value) => setChampionshipForm({ ...championshipForm, tournament_type: value })}
+        onValueChange={(value) =>
+          setChampionshipForm({ ...championshipForm, tournament_type: value })
+        }
       >
         <SelectTrigger>
-          <SelectValue placeholder="Оберіть тип" />
+          <SelectValue placeholder="Оберіть тип турніру" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="league">Ліга</SelectItem>
@@ -395,46 +403,57 @@ export function AdminPanel({ onLogout, currentChampionshipId, onChampionshipChan
         </SelectContent>
       </Select>
     </div>
-    <div>
-      <Label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={championshipForm.is_active}
-          onChange={(e) => setChampionshipForm({ ...championshipForm, is_active: e.target.checked })}
-        />
-        Активний чемпіонат
-      </Label>
-    </div>
-    <Button type="submit" disabled={loading}>
-      {editingChampionship ? "Оновити" : "Додати"} чемпіонат
+
+    <Button type="submit" className="w-full">
+      {editingChampionship ? "Оновити чемпіонат" : "Додати чемпіонат"}
     </Button>
   </form>
 
-  {/* ✅ Список чемпіонатів або повідомлення */}
-  {championships.length > 0 ? (
-    <ul className="space-y-2">
-      {championships.map((champ) => (
-        <li key={champ.id} className="border p-4 rounded">
-          <div className="flex justify-between items-center">
+  {/* ✅ Список чемпіонатів */}
+  <div>
+    {championships.length === 0 ? (
+      <p className="text-muted-foreground">Немає чемпіонатів.</p>
+    ) : (
+      <ul className="space-y-2">
+        {championships.map((champ) => (
+          <li
+            key={champ.id}
+            className="p-3 border rounded-md flex justify-between items-center"
+          >
             <div>
               <strong>{champ.name}</strong> ({champ.season})
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditingChampionship(champ)}>
+            <div className="space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingChampionship(champ)
+                  setChampionshipForm({
+                    name: champ.name,
+                    season: champ.season,
+                    is_active: champ.is_active,
+                    tournament_type: champ.tournament_type,
+                  })
+                }}
+              >
                 Редагувати
               </Button>
-              <Button variant="destructive" onClick={() => handleDeleteChampionship(champ.id)}>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleDeleteChampionship(champ.id)}
+              >
                 Видалити
               </Button>
             </div>
-          </div>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p className="text-muted-foreground">Поки що немає чемпіонатів. Додайте перший за допомогою форми вище.</p>
-  )}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
 </TabsContent>
+
 
 
         <TabsContent value="teams" className="space-y-4">
