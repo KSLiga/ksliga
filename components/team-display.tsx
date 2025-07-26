@@ -14,19 +14,19 @@ export function TeamDisplay({ teamName, teamLogo, size = "md", showName = true, 
   }
 
   const textSizeClasses = {
-    sm: "text-sm",
-    md: "text-base",
-    lg: "text-lg",
+    sm: "text-xs sm:text-sm",
+    md: "text-sm sm:text-base",
+    lg: "text-base sm:text-lg",
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex items-center gap-1 sm:gap-2 ${className}`}>
       <img
         src={teamLogo || "/placeholder.svg?height=32&width=32"}
         alt={`${teamName} logo`}
-        className={`object-contain ${sizeClasses[size]}`}
+        className={`object-contain flex-shrink-0 ${sizeClasses[size]}`}
       />
-      {showName && <span className={`font-medium ${textSizeClasses[size]}`}>{teamName}</span>}
+      {showName && <span className={`font-medium truncate ${textSizeClasses[size]}`}>{teamName}</span>}
     </div>
   )
 }
