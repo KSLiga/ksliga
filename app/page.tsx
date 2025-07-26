@@ -178,7 +178,7 @@ export default function KSLigaSite() {
       <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
         <div className="max-w-6xl mx-auto px-4 py-4 sm:py-8 text-center">
           <div className="flex items-center justify-center gap-2 sm:gap-4 mb-2">
-            <img src="/images/ks-logo.png" alt="KS TV Logo" className="h-12 sm:h-666 w-auto object-contain" />
+            <img src="/images/ks-logo.png" alt="KS TV Logo" className="h-666 sm:h-16 w-auto object-contain" />
             <h1 className="text-2xl sm:text-4xl font-bold">KS Liga</h1>
           </div>
           <p className="text-yellow-200 text-sm sm:text-lg">KS TV – Спортивні події онлайн!</p>
